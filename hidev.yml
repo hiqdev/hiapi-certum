@@ -1,11 +1,13 @@
 package:
     type:           yii2-extension
     name:           hiapi-certum
-    title:          hiAPI Certum.pl plugin
+    title:          hiAPI Certum.eu plugin
     headline:       hiAPI Certum
     keywords:       hiapi, certum
     description:    |
-        Provides integration with Certum.pl certificate provider.
+        Provides integration with [Certum.eu] certificate provider.
+
+        [Certum.eu]: https://www.certum.eu/
 
 .php_cs:
     finder:

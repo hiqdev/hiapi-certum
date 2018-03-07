@@ -1,6 +1,6 @@
 # hiAPI Certum
 
-**hiAPI Certum.pl plugin**
+**hiAPI Certum.eu plugin**
 
 [![Latest Stable Version](https://poser.pugx.org/hiqdev/hiapi-certum/v/stable)](https://packagist.org/packages/hiqdev/hiapi-certum)
 [![Total Downloads](https://poser.pugx.org/hiqdev/hiapi-certum/downloads)](https://packagist.org/packages/hiqdev/hiapi-certum)
@@ -8,7 +8,9 @@
 [![Scrutinizer Code Coverage](https://img.shields.io/scrutinizer/coverage/g/hiqdev/hiapi-certum.svg)](https://scrutinizer-ci.com/g/hiqdev/hiapi-certum/)
 [![Scrutinizer Code Quality](https://img.shields.io/scrutinizer/g/hiqdev/hiapi-certum.svg)](https://scrutinizer-ci.com/g/hiqdev/hiapi-certum/)
 
-Provides integration with Certum.pl certificate provider.
+Provides integration with [Certum.eu] certificate provider.
+
+[Certum.eu]: https://www.certum.eu/
 
 ## Installation
 
@@ -33,4 +35,4 @@ to the require section of your composer.json.
 This project is released under the terms of the BSD-3-Clause [license](LICENSE).
 Read more [here](http://choosealicense.com/licenses/bsd-3-clause).
 
-Copyright © 2017-2018, HiQDev (http://hiqdev.com/)
+Copyright © 2018, HiQDev (http://hiqdev.com/)

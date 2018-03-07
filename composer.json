@@ -1,7 +1,7 @@
 {
     "name": "hiqdev/hiapi-certum",
     "type": "yii2-extension",
-    "description": "hiAPI Certum.pl plugin",
+    "description": "hiAPI Certum.eu plugin",
     "keywords": [
         "hiapi",
         "certum"

@@ -1,7 +1,7 @@
 <?php
 
 $header = <<<EOF
-hiAPI Certum.pl plugin
+hiAPI Certum.eu plugin
 
 @link      https://github.com/hiqdev/hiapi-certum
 @package   hiapi-certum

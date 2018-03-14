@@ -8,7 +8,12 @@
  * @copyright Copyright (c) 2018, HiQDev (http://hiqdev.com/)
  */
 
-namespace hiapi\gogetssl;
+namespace hiapi\certum;
+
+use Closure;
+use dot;
+use err;
+use hiapi\certum\lib\PartnerAPIService;
 
 /**
  * Certum.eu certificate tool.
@@ -17,64 +22,112 @@ namespace hiapi\gogetssl;
  */
 class CertumTool extends \hiapi\components\AbstractTool
 {
-    protected $api;
 
-    protected $isConnected = null;
+    const LANG = 'en';
+    public $debug = false;
+    protected $service = null;
 
     public function __construct($base, $data=null)
     {
         parent::__construct($base, $data);
+        $this->login();
     }
 
-    /// LOGIN, REQUEST, RESPONSE
-    private function login()
+    protected function login() {
+        try {
+            if ($this->service === null) {
+                $this->service = new PartnerAPIService($this->data['login'], $this->data['password'], $this->debug ? PartnerAPIService::WSDL_TEST : PartnerAPIService::WSDL_PROD, CertumTool::LANG);
+                $this->service->setCatchSoapFault(TRUE);
+            }
+        } catch (PartnerAPIException $e) {
+            $this->service = err::set([], $e->getMessage());
+        }
+
+        return $this->service;
+    }
+
+    protected function request($op)
     {
-        set_include_path(get_include_path() . PATH_SEPARATOR . dirname(__DIR__) . '/lib');
-        require_once('certumPartnerAPI/service.php');
-        $this->api = new PartnerAPIService($this->data['login'], $this->data['password']);
+        $op->call();
+        return $op;
     }
 
-    private function request($command, $args = [], $loginRequired = false)
+    protected function response($op)
     {
-        if ($this->isConnected === null) {
-            $this->isConnected = $this->login();
-        }
-        if ($this->isError($this->isConnected, $loginRequired)) {
-            return $this->isConnected;
+        if ($op->isSuccess()) {
+            return $op->getOutputDataAsArray();
         }
 
-        $res = call_user_func_array([$this->api, $command], $args);
-
-        return $this->response(['command' => $command, 'args' => $args], $res, $loginRequired);
+        return err::set([], arr::cjoin(arr::get_sub($op->getErrorTexts(), 'text'), '; ');
     }
 
-    private function response($data = [], $res = null, $loginRequired = false)
+    /***
+      * Getting basic data for certificate
+      */
+    private function _prepareOrderData($row)
     {
-        if (err::is($res)) {
-            return $res;
-        }
-        if ($this->isError($res, $loginRequired)) {
-            return err::set($data, $res['description'] ?: 'unknown error');
-        }
-        if (empty($res)) {
-            return err::set($data, 'empty response');
+        $contact = $this->_prepareOrderContacts($row);
+        if (err::is($contact)) {
+            return err::set($row, err::get($contact));
         }
 
-        return $res;
+        $res = [
+            'setCSR' => $row['csr'],
+            'setCustomer' => $contact['client'],
+            'setHashAlgorithm' => "SHA1",
+            'setEmail' => $contact['email'],
+            'setRequestorInfo' => [
+                $contact['first_name'],
+                $contact['last_name'],
+                $contact['email'],
+                $contact['phone'],
+                $contact['country_name'],
+                $contact['postal_code'],
+                $contact['city'],
+                $contact['street1'],
+            ],
+            'setLanguage' => CertumTool::LANG,
+            'setVerificationNotificationEnabled' => true,
+            'addApprover' => [
+                $row['name'],
+                $row['approver_email'],
+                $row['dcv_method'],
+            ],
+        ];
     }
+
+    protected function _prepareOrderContacts($row)
+    {
+        if (empty($row['admin_id'])) {
+            return err::set($row, 'no data given', ['field' => "admin"]);
+        }
+
+        return $this->base->contactsSearch('ids' => $row['admin_id']);
+    }
+
+
 
     /// GENERAL COMMANDS
     public function certificateInfo($row)
     {
-        $info = $this->request('getOrderStatus', [$row['remoteid']]);
-        if (err::is($info)) {
-            return $info;
+        $op = $this->service->operationGetCertificate();
+        $op->setOrderID($row['remoteid']);
+        $res = $this->response($this->request($op));
+        if (err::is($res)) {
+            return err::set($row, err::get($res));
         }
-        $info['name'] = $info['domain'];
-        $info['begins'] = $info['valid_from'] === '0000-00-00' ? '' : $info['valid_from'];
-        $info['expires'] = $info['valid_till'] === '0000-00-00' ? '' : $info['valid_till'];
 
-        return $info;
+        $cert = $op->getCertificateDetails();
+
+        return [
+            'id' => $row['id'],
+            'crt_code' => $cert->X509Cert,
+            'ca_code' => $op->getCaBundle(),
+            'state' => $cert->certificateStatus,
+            'begins' => $cert->startDate,
+            'expires' => $cert->endDate,
+            'serial' => $cert->serialNumber,
+        ];
     }
 
     public function certificateGetDomainEmails($row)
@@ -98,7 +151,15 @@ class CertumTool extends \hiapi\components\AbstractTool
             return $data;
         }
 
-        return $this->request('addSSLOrder', [$data]);
+        $op = $this->service->operationQuickOrder();
+        foreach ($data as $key => $value) {
+            call_user_func_array([$op, $key], is_array($value) ? $value : [$value]);
+        }
+
+        $res = $this->response($this->request($op));
+        return [
+            // Init
+        ];
     }
 
     public function certificateRenew($row = [])

@@ -58,7 +58,7 @@ class CertumTool extends \hiapi\components\AbstractTool
             return $op->getOutputDataAsArray();
         }
 
-        return err::set([], arr::cjoin(arr::get_sub($op->getErrorTexts(), 'text'), '; ');
+        return err::set([], arr::cjoin(arr::get_sub($op->getErrorTexts(), 'text'), '; '));
     }
 
     /***
@@ -72,6 +72,7 @@ class CertumTool extends \hiapi\components\AbstractTool
         }
 
         $res = [
+            'setProduct' => $row['product_id'],
             'setCSR' => $row['csr'],
             'setCustomer' => $contact['client'],
             'setHashAlgorithm' => "SHA1",
@@ -96,18 +97,51 @@ class CertumTool extends \hiapi\components\AbstractTool
         ];
     }
 
+    protected function getProductsList($row)
+    {
+        $op = $this->service->operationGetProductList();
+        $op->setHashAlgorithm(true);
+        $res = $this->response($this->request($op));
+        if (err::is($res)) {
+            return err::set($row, err::get($res));
+        }
+
+        return $res;
+    }
+
     protected function _prepareOrderContacts($row)
     {
         if (empty($row['admin_id'])) {
             return err::set($row, 'no data given', ['field' => "admin"]);
         }
 
-        return $this->base->contactsSearch('ids' => $row['admin_id']);
+        return $this->base->contactsSearch(['ids' => $row['admin_id']]);
     }
 
-
-
     /// GENERAL COMMANDS
+    public function certificatesGetAllProducts()
+    {
+        $op = $this->service->operationGetProductList();
+        $op->setHashAlgorithm(true);
+        $res = $this->response($this->request($op));
+        if (err::is($res)) {
+            return err::set($row, err::get($res));
+        }
+
+        $products = $op->getProducts();
+        foreach ($products as $product) {
+            $res[$product->type][$product->code] = [
+                'code' => $product->code,
+                'type' => $product->type,
+                'period' => $product->validityPeriod,
+                'defaultHashAlgorithm' => $product->defaultHashAlgorithm,
+                'supportedHashAlgorithms' => $product->supportedHashAlgorithms,
+            ];
+        }
+
+        return $res;
+    }
+
     public function certificateInfo($row)
     {
         $op = $this->service->operationGetCertificate();

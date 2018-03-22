@@ -17,8 +17,6 @@ use err;
 use arr;
 use PartnerAPIService;
 
-set_include_path(get_include_path() . PATH_SEPARATOR . dirname(__DIR__) . '/src/lib/');
-
 /**
  * Certum.eu certificate tool.
  *
@@ -31,30 +29,27 @@ class CertumTool extends \hiapi\components\AbstractTool
     public $debug = true;
     protected $service = null;
 
-    public function __construct($base, $data=null)
-    {
-        parent::__construct($base, $data);
-        $this->login();
-    }
-
-    protected function login() {
-        try {
-            if ($this->service === null) {
-                require_once "certumPartnerAPI/service.php";
-                $this->service = new PartnerAPIService($this->data['login'], $this->data['password'], $this->debug ? PartnerAPIService::WSDL_TEST : PartnerAPIService::WSDL_PROD, CertumTool::LANG);
-                $this->service->setCatchSoapFault(TRUE);
-            }
-        } catch (PartnerAPIException $e) {
-            $this->service = err::set([], $e->getMessage());
+    protected function connect() {
+        if ($this->service === null) {
+            set_include_path(get_include_path() . PATH_SEPARATOR . dirname(__DIR__) . '/src/lib/');
+            require_once "certumPartnerAPI/service.php";
+            $this->service = new PartnerAPIService($this->data['login'], $this->data['password'], $this->debug ? PartnerAPIService::WSDL_TEST : PartnerAPIService::WSDL_PROD, CertumTool::LANG);
+            $this->service->setCatchSoapFault(TRUE);
         }
 
         return $this->service;
     }
 
-    protected function request($op)
+    public function request($command, $args = [])
     {
+        $this->connect();
+        $op = $this->service->{"operation$command"}();
+        foreach ($args as $key => $value) {
+            $op->{$key}($value);
+        }
         $op->call();
-        return $op;
+
+        return $this->response($op);
     }
 
     protected function response($op)
@@ -111,9 +106,9 @@ class CertumTool extends \hiapi\components\AbstractTool
 
     protected function getProductsList($row)
     {
-        $op = $this->service->operationGetProductList();
-        $op->setHashAlgorithm(true);
-        $res = $this->response($this->request($op));
+        $res = $this->request('GetProductList', [
+            'setHashAlgorigthm' => true,
+        ]);
         if (err::is($res)) {
             return err::set($row, err::get($res));
         }
@@ -133,9 +128,9 @@ class CertumTool extends \hiapi\components\AbstractTool
     /// GENERAL COMMANDS
     public function certificatesGetAllProducts($jrow = [])
     {
-        $op = $this->service->operationGetProductList();
-        $op->setHashAlgorithm(true);
-        $res = $this->response($this->request($op));
+        $res = $this->request('GetProductList', [
+            'setHashAlgorigthm' => true,
+        ]);
         if (err::is($res)) {
             return err::set($row, err::get($res));
         }
@@ -154,9 +149,9 @@ class CertumTool extends \hiapi\components\AbstractTool
 
     public function certificateInfo($row)
     {
-        $op = $this->service->operationGetCertificate();
-        $op->setOrderID($row['remoteid']);
-        $res = $this->response($this->request($op));
+        $res = $this->request('GetCertificate', [
+            'setOrderID' => $rowp['remoteid'],
+        ]);
         if (err::is($res)) {
             return err::set($row, err::get($res));
         }
@@ -194,12 +189,11 @@ class CertumTool extends \hiapi\components\AbstractTool
             return $data;
         }
 
-        $op = $this->service->operationQuickOrder();
-        foreach ($data as $key => $value) {
-            call_user_func_array([$op, $key], is_array($value) ? $value : [$value]);
+        foreach ($data as $key => &$value) {
+            $value = is_array($value) ? $value : [$value];
         }
 
-        $res = $this->response($this->request($op));
+        $res = $this->request('QuickOrder', $data);
         if (err::is($res)) {
             return err::set($row, err::get($res));
         }

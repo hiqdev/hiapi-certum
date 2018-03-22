@@ -55,7 +55,10 @@ class CertumTool extends \hiapi\components\AbstractTool
     protected function response($op)
     {
         if ($op->isSuccess()) {
-            return $op->getOutputDataAsArray();
+            return [
+                'array' => $op->getOutputDataAsArray(),
+                'object' => $op,
+            ];
         }
 
         return err::set([], arr::cjoin(arr::get_sub($op->getErrorTexts(), 'text'), '; '));
@@ -135,7 +138,7 @@ class CertumTool extends \hiapi\components\AbstractTool
             return err::set($row, err::get($res));
         }
 
-        foreach ($res['getProductListResponse']['products']['product'] as $product) {
+        foreach ($res['array']['getProductListResponse']['products']['product'] as $product) {
             $_res["certum_{$product['code']}"] = [
                 'code' => $product['code'],
                 'type' => $product['type'],
@@ -149,14 +152,22 @@ class CertumTool extends \hiapi\components\AbstractTool
 
     public function certificateInfo($row)
     {
-        $res = $this->request('GetCertificate', [
-            'setOrderID' => $rowp['remoteid'],
+        $res = $this->request('GetOrderByOrderID', [
+            'setOrderID' => $row['remoteid'],
+            'setOrderStatus' => true,
+            'setCertificateDetails' => true,
+            'setOrderDetails' => true,
         ]);
+
         if (err::is($res)) {
             return err::set($row, err::get($res));
         }
 
-        $cert = $op->getCertificateDetails();
+        $cert = $res['object']->getOrders()->certificateDetails;
+        if ($cert == null) {
+            return $row;
+        }
+
         return [
             'id' => $row['id'],
             'crt_code' => $cert->X509Cert,
@@ -198,12 +209,13 @@ class CertumTool extends \hiapi\components\AbstractTool
             return err::set($row, err::get($res));
         }
 
-        $op = $this->service->operationVerifyDomain();
-        $op->setCode($res['quickOrderResponse']['verifications']['verification']['code']);
-        $op->call();
+        $this->request('VerifyDomain', [
+            'setCode' => $res['array']['quickOrderResponse']['verifications']['verification']['code'],
+        ]);
+
         return err::is($res) ? err::set($row, err::get($res)) : [
-            'order_id' => $res['quickOrderResponse']['orderID'],
-            'code' => $res['quickOrderResponse']['verifications']['verification']['code'],
+            'order_id' => $res['array']['quickOrderResponse']['orderID'],
+            'code' => $res['array']['quickOrderResponse']['verifications']['verification']['code'],
         ];
     }
 

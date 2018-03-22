@@ -1,103 +1,106 @@
 <?php
+
+namespace hiapi\certum\lib;
+
 /**
  * Partner API Library
- * 
+ *
  * @copyright Copyright (c) 2015 Unizeto Technologies SA
  * @license license.txt
  */
 
 /**
  * This class represents a Partner API WebService.
- * 
+ *
  * When constructing an object of this type you have to pass proper
  * user name and password as arguments. Optionally, you may specify a URL
  * for a WSDL file of a web service as the third argument. The fourth argument
  * can be used to specify a language used for some localized texts.
- * 
+ *
  * @package service
  */
 class PartnerAPIService {
 
     /**
      * A constant field containing URL to a WSDL file in a testing web service
-     * 
+     *
      * @var string
      */
     const WSDL_TEST = 'https://213.222.200.154/service/PartnerApi?wsdl';
-    
+
     /**
      * A constant field containing URL to a WSDL file in a production web service
-     * 
+     *
      * @var string
      */
     const WSDL_PROD = 'https://gs.certum.pl/service/PartnerApi?wsdl';
-    
+
     /**
      * List of available languages used for some localized messages.
-     * 
+     *
      * It is a list of two-letter language codes joined with a semicolon.
      * Currently only two languages are supported: English and Polish.
-     * 
+     *
      * @var string
      */
     const LANGS = 'en;pl';
-    
+
     //const METHOD_SOAP = "soap";
     //const METHOD_CURL = "curl";
 
     /**
      * A URL of currently used web service.
-     * 
+     *
      * @var string
      */
     private $_wsdl = NULL;
-    
+
     /**
      * A current language code.
-     * 
+     *
      * @var string
      */
     private $_lang = NULL;
-    
+
     /**
      * A user name used for authentication in the Partner API Service.
-     * 
+     *
      * @var string
      */
     private $_userName = '';
-    
+
     /**
      * A password used for authentication in the Partner API Service.
-     * 
+     *
      * @var string
      */
     private $_password = '';
-    
+
     //private $_method = NULL;
-    
+
     /**
      * Indicates if SoapFault exceptions should be passed or catched.
      * If they are catched they are rethrown as PartnerAPIException.
-     * 
+     *
      * @var boolean
      */
     private $_catchSoapFault = FALSE;
 
     /**
      * Indicates if debugging information should be writeten to a file.
-     * 
+     *
      * If set to NULL, no debugging information will be stored anywhere.
      * Otherwise, $_debugFile should contain a file name or a URL supported by PHP.
-     * 
+     *
      * @var string
      */
     private $_debugFile = NULL;
-    
+
     // ========================================================================
 
     /**
      * The constructor.
-     * 
+     *
      * The $userName and $password arguments are required. They are used
      * as credentials data in the Partner API WebService.
      * So, creating an object of this class you have to pass your user name
@@ -106,7 +109,7 @@ class PartnerAPIService {
      * to the testing web service using the URL defined in the WSDL_TEST field.
      * The fourth argument $lang is also optional. If given it must match one
      * of language codes in the LANGS constant field. Otherwise 'en' is used.
-     * 
+     *
      * @param string $userName
      * @param string $password
      * @param string|null $wsdl Default: NULL
@@ -133,16 +136,16 @@ class PartnerAPIService {
 
     /**
      * Returns the user name
-     * 
+     *
      * @return string
      */
     public function getUserName() {
         return $this->_userName;
     }
-    
+
     /**
      * Sets the user name to be used for authentication in a web service.
-     * 
+     *
      * @param string $userName
      * @return PartnerAPIService The object being called
      */
@@ -150,19 +153,19 @@ class PartnerAPIService {
         $this->_userName = (string) $userName;
         return $this;
     }
-    
+
     /**
      * Returns the password
-     * 
+     *
      * @return string
      */
     public function getPassword() {
         return $this->_password;
     }
-    
+
     /**
      * Sets the password to be used for authentication in a web service.
-     * 
+     *
      * @param string $password
      * @return PartnerAPIService The object being called
      */
@@ -173,16 +176,16 @@ class PartnerAPIService {
 
     /**
      * Returns current language
-     * 
+     *
      * @return string
      */
     public function getLang() {
         return $this->_lang;
     }
-    
+
     /**
      * Sets the current language
-     * 
+     *
      * @param string $lang
      * @return PartnerAPIService The object being called
      */
@@ -193,19 +196,19 @@ class PartnerAPIService {
         $this->_lang = $lang;
         return $this;
     }
-    
+
     /**
      * Returns current URL for a WSDL file.
-     * 
+     *
      * @return string
      */
     public function getWSDL() {
         return $this->_wsdl;
     }
-    
+
     /**
      * Sets the current URL for a WSDL file.
-     * 
+     *
      * @param string|null $wsdl
      * @return PartnerAPIService The object being called
      */
@@ -219,9 +222,9 @@ class PartnerAPIService {
 
     /**
      * Configures the service to pass or to catch SoapFault exceptions.
-     * 
+     *
      * If SoapFault exceptions are catched they are rethrown as PartnerAPIException.
-     * 
+     *
      * @param boolean $yes_or_no
      * @return PartnerAPIService
      */
@@ -229,10 +232,10 @@ class PartnerAPIService {
         $this->_catchSoapFault = (bool) $yes_or_no;
         return $this;
     }
-    
+
     /**
      * Tells if SoapFault exceptions are passed or catched.
-     * 
+     *
      * @return boolean True if SoapFault exceptions are catched, False otherwise
      */
     public function getCatchSoapFault() {
@@ -262,23 +265,23 @@ class PartnerAPIService {
         $this->_debugFile = $fname;
         return $this;
     }
-    
+
     /**
      * Return a file name for writing debug information.
-     * 
+     *
      * It can also return null if no file name has been set.
-     * 
+     *
      * @return string|null A file name
      */
     public function getDebugFile() {
         return $this->_debugFile;
     }
-    
+
     /*  future implementation will also support CURL
     public function getMethod() {
         return $this->_method;
     }
-    
+
     public function setMethod($method) {
         if ($method == PartnerAPIService::METHOD_SOAP) {
             if (class_exists('SoapClient'))
@@ -302,7 +305,7 @@ class PartnerAPIService {
 
     /**
      * Returns an object representing the getStatement operation.
-     * 
+     *
      * @return PartnerAPIOperationGetStatement
      */
     public function operationGetStatement() {
@@ -314,7 +317,7 @@ class PartnerAPIService {
 
     /**
      * Returns an object representing the validateOrderParameters operation.
-     * 
+     *
      * @return PartnerAPIOperationValidateOrderParameters
      */
     public function operationValidateOrderParameters() {
@@ -326,7 +329,7 @@ class PartnerAPIService {
 
     /**
      * Returns an object representing the quickOrder operation.
-     * 
+     *
      * @return PartnerAPIOperationQuickOrder
      */
     public function operationQuickOrder() {
@@ -335,10 +338,10 @@ class PartnerAPIService {
         $operation->setService($this);
         return $operation;
     }
-    
+
     /**
      * Returns an object representing the getApproverList operation.
-     * 
+     *
      * @return PartnerAPIOperationGetApproverList
      */
     public function operationGetApproverList() {
@@ -347,10 +350,10 @@ class PartnerAPIService {
         $operation->setService($this);
         return $operation;
     }
-    
+
     /**
      * Returns an object representing the getOrderByOrderID operation.
-     * 
+     *
      * @return PartnerAPIOperationGetOrderByOrderID
      */
     public function operationGetOrderByOrderID() {
@@ -362,7 +365,7 @@ class PartnerAPIService {
 
     /**
      * Returns an object representing the getOrderByOrderID operation.
-     * 
+     *
      * @return PartnerAPIOperationGetOrderByOrderID
      */
     public function operationGetOrdersByDateRange() {
@@ -374,7 +377,7 @@ class PartnerAPIService {
 
     /**
      * Returns an object representing the getModifiedOrders operation.
-     * 
+     *
      * @return PartnerAPIOperationGetModifiedOrders
      */
     public function operationGetModifiedOrders() {
@@ -386,7 +389,7 @@ class PartnerAPIService {
 
     /**
      * Returns an object representing the cancelOrder operation.
-     * 
+     *
      * @return PartnerAPIOperationCancelOrder
      */
     public function operationCancelOrder() {
@@ -398,7 +401,7 @@ class PartnerAPIService {
 
     /**
      * Returns an object representing the sendNotifications operation.
-     * 
+     *
      * @return PartnerAPIOperationSendNotifications
      */
     public function operationSendNotifications() {
@@ -410,7 +413,7 @@ class PartnerAPIService {
 
     /**
      * Returns an object representing the getProductList operation.
-     * 
+     *
      * @return PartnerAPIOperationGetProductList
      */
     public function operationGetProductList() {
@@ -422,7 +425,7 @@ class PartnerAPIService {
 
     /**
      * Returns an object representing the getConfiguration operation.
-     * 
+     *
      * @return PartnerAPIOperationGetConfiguration
      */
     public function operationGetConfiguration() {
@@ -434,7 +437,7 @@ class PartnerAPIService {
 
     /**
      * Returns an object representing the getDomainVerification operation.
-     * 
+     *
      * @return PartnerAPIOperationGetDomainVerification
      */
     public function operationGetDomainVerification() {
@@ -446,7 +449,7 @@ class PartnerAPIService {
 
     /**
      * Returns an object representing the getCertificate operation.
-     * 
+     *
      * @return PartnerAPIOperationGetCertificate
      */
     public function operationGetCertificate() {
@@ -458,7 +461,7 @@ class PartnerAPIService {
 
     /**
      * Returns an object representing the renewCertificate operation.
-     * 
+     *
      * @return PartnerAPIOperationRenewCertificate
      */
     public function operationRenewCertificate() {
@@ -470,7 +473,7 @@ class PartnerAPIService {
 
     /**
      * Returns an object representing the revokeCertificate operation.
-     * 
+     *
      * @return PartnerAPIOperationRevokeCertificate
      */
     public function operationRevokeCertificate() {
@@ -486,24 +489,24 @@ class PartnerAPIService {
      * @return PartnerAPIOperationChangeApprovers
      */
     public function operationChangeApprovers() {
-    	require_once 'certumPartnerAPI/operations/operationChangeApprovers.php';
-    	$operation = new PartnerAPIOperationChangeApprovers();
-    	$operation->setService($this);
-    	return $operation;
+        require_once 'certumPartnerAPI/operations/operationChangeApprovers.php';
+        $operation = new PartnerAPIOperationChangeApprovers();
+        $operation->setService($this);
+        return $operation;
     }
-    
+
     /**
      * Returns an object representing the verifyDomain operation.
      *
      * @return PartnerAPIOperationVerifyDomain
      */
     public function operationVerifyDomain() {
-    	require_once 'certumPartnerAPI/operations/operationVerifyDomain.php';
-    	$operation = new PartnerAPIOperationVerifyDomain();
-    	$operation->setService($this);
-    	return $operation;
+        require_once 'certumPartnerAPI/operations/operationVerifyDomain.php';
+        $operation = new PartnerAPIOperationVerifyDomain();
+        $operation->setService($this);
+        return $operation;
     }
-    
+
     /**
      * Returns an object representing the getExpiringCertificates operation.
      *
@@ -515,7 +518,7 @@ class PartnerAPIService {
         $operation->setService($this);
         return $operation;
     }
-    
+
     /**
      * Returns an object representing the verifyOrder operation.
      *
@@ -539,7 +542,7 @@ class PartnerAPIService {
         $operation->setService($this);
         return $operation;
     }
-    
+
     /**
      * Returns an object representing the modifySNICertificate operation.
      *
@@ -551,7 +554,7 @@ class PartnerAPIService {
         $operation->setService($this);
         return $operation;
     }
-    
+
     /**
      * Returns an object representing the updateDocuments operation.
      *
@@ -589,10 +592,10 @@ class PartnerAPIService {
     }
 
     // ========================================================================
-    
+
     /**
      * This method invokes a given operation in the Partner API WebService
-     * 
+     *
      * This method is used for communication with the service. It sends the data
      * passed in the $data argument to the service and invokes the operation specified
      * in the $operation argument. It uses a WSDL file defined as the current WSDL file
@@ -602,15 +605,15 @@ class PartnerAPIService {
      * and values are subsequent arrays. The subsequent arrays contain all passed elements.
      * A subsequent array's key is an element's name and value is a scalar value,
      * an array of scalar values or an array of further elements.
-     * 
+     *
      * This method can write debugging information to a file (see the setDebugFile() method).
      * This information is stored in a file only after a successful call to a service.
-     * 
+     *
      * Although it is possible, it is not intended this method to be called directly
      * by a user. It is invoked by operation objects.
-     * 
+     *
      * It returns an object containg all returned data from the service.
-     * 
+     *
      * @param string $operation The operations to be called
      * @param array $data The data to be passed to the operation
      * @return object
@@ -634,10 +637,10 @@ class PartnerAPIService {
         $this->writeDebugData($operation, $data, $r, $client);
         return $r;
     }
-    
+
     /**
      * Writes debugging information to a file.
-     * 
+     *
      * @param string $operation Operation invoked
      * @param array $data Data sent
      * @param array|string|object $r Response data
@@ -667,5 +670,5 @@ class PartnerAPIService {
             fclose($f);
         }
     }
-    
+
 }

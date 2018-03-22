@@ -8,12 +8,16 @@
  * @copyright Copyright (c) 2018, HiQDev (http://hiqdev.com/)
  */
 
+
 namespace hiapi\certum;
 
 use Closure;
 use dot;
 use err;
-use hiapi\certum\lib\PartnerAPIService;
+use arr;
+use PartnerAPIService;
+
+set_include_path(get_include_path() . PATH_SEPARATOR . dirname(__DIR__) . '/src/lib/');
 
 /**
  * Certum.eu certificate tool.
@@ -24,7 +28,7 @@ class CertumTool extends \hiapi\components\AbstractTool
 {
 
     const LANG = 'en';
-    public $debug = false;
+    public $debug = true;
     protected $service = null;
 
     public function __construct($base, $data=null)
@@ -36,6 +40,7 @@ class CertumTool extends \hiapi\components\AbstractTool
     protected function login() {
         try {
             if ($this->service === null) {
+                require_once "certumPartnerAPI/service.php";
                 $this->service = new PartnerAPIService($this->data['login'], $this->data['password'], $this->debug ? PartnerAPIService::WSDL_TEST : PartnerAPIService::WSDL_PROD, CertumTool::LANG);
                 $this->service->setCatchSoapFault(TRUE);
             }
@@ -71,18 +76,19 @@ class CertumTool extends \hiapi\components\AbstractTool
             return err::set($row, err::get($contact));
         }
 
-        $res = [
-            'setProduct' => $row['product_id'],
+        $contact =  $contact[$row['admin_id']];
+        return [
+            'setProductCode' => $row['product_no'] + $row['amount'] - 1,
             'setCSR' => $row['csr'],
             'setCustomer' => $contact['client'],
-            'setHashAlgorithm' => "SHA1",
+            'setHashAlgorithm' => "SHA2",
             'setEmail' => $contact['email'],
             'setRequestorInfo' => [
                 $contact['first_name'],
                 $contact['last_name'],
                 $contact['email'],
                 $contact['phone'],
-                $contact['country_name'],
+                strtoupper($contact['country']),
                 $contact['postal_code'],
                 $contact['city'],
                 $contact['street1'],
@@ -90,11 +96,17 @@ class CertumTool extends \hiapi\components\AbstractTool
             'setLanguage' => CertumTool::LANG,
             'setVerificationNotificationEnabled' => true,
             'addApprover' => [
-                $row['name'],
+                $row['fqdn'],
                 $row['approver_email'],
-                $row['dcv_method'],
+                strtoupper($row['dcv_method']),
             ],
+            'addSANEntry' => $row['fqdn'],
         ];
+    }
+
+    public function certificateGetWebserverTypes()
+    {
+        return [];
     }
 
     protected function getProductsList($row)
@@ -119,7 +131,7 @@ class CertumTool extends \hiapi\components\AbstractTool
     }
 
     /// GENERAL COMMANDS
-    public function certificatesGetAllProducts()
+    public function certificatesGetAllProducts($jrow = [])
     {
         $op = $this->service->operationGetProductList();
         $op->setHashAlgorithm(true);
@@ -128,18 +140,16 @@ class CertumTool extends \hiapi\components\AbstractTool
             return err::set($row, err::get($res));
         }
 
-        $products = $op->getProducts();
-        foreach ($products as $product) {
-            $res[$product->type][$product->code] = [
-                'code' => $product->code,
-                'type' => $product->type,
-                'period' => $product->validityPeriod,
-                'defaultHashAlgorithm' => $product->defaultHashAlgorithm,
-                'supportedHashAlgorithms' => $product->supportedHashAlgorithms,
+        foreach ($res['getProductListResponse']['products']['product'] as $product) {
+            $_res["certum_{$product['code']}"] = [
+                'code' => $product['code'],
+                'type' => $product['type'],
+                'period' => $product['validityPeriod'],
+                'defaultHashAlgorithm' => $product['defaultHashAlgorithm'],
+                'supportedHashAlgorithms' => $product['supportedHashAlgorithms'],
             ];
         }
-
-        return $res;
+        return $_res;
     }
 
     public function certificateInfo($row)
@@ -152,7 +162,6 @@ class CertumTool extends \hiapi\components\AbstractTool
         }
 
         $cert = $op->getCertificateDetails();
-
         return [
             'id' => $row['id'],
             'crt_code' => $cert->X509Cert,
@@ -191,8 +200,16 @@ class CertumTool extends \hiapi\components\AbstractTool
         }
 
         $res = $this->response($this->request($op));
-        return [
-            // Init
+        if (err::is($res)) {
+            return err::set($row, err::get($res));
+        }
+
+        $op = $this->service->operationVerifyDomain();
+        $op->setCode($res['quickOrderResponse']['verifications']['verification']['code']);
+        $op->call();
+        return err::is($res) ? err::set($row, err::get($res)) : [
+            'order_id' => $res['quickOrderResponse']['orderID'],
+            'code' => $res['quickOrderResponse']['verifications']['verification']['code'],
         ];
     }
 
@@ -202,6 +219,8 @@ class CertumTool extends \hiapi\components\AbstractTool
         if (err::is($data)) {
             return $data;
         }
+
+        $op = $this->service->operationRenewCertificate();
 
         return $this->request('addSSLRenewOrder', [$data]);
     }

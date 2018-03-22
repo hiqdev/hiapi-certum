@@ -1,4 +1,7 @@
 <?php
+
+namespace hiapi\certum\lib;
+
 /**
  * Partner API Library
  *
@@ -486,10 +489,10 @@ class PartnerAPIService {
      * @return PartnerAPIOperationChangeApprovers
      */
     public function operationChangeApprovers() {
-    	require_once 'certumPartnerAPI/operations/operationChangeApprovers.php';
-    	$operation = new PartnerAPIOperationChangeApprovers();
-    	$operation->setService($this);
-    	return $operation;
+        require_once 'certumPartnerAPI/operations/operationChangeApprovers.php';
+        $operation = new PartnerAPIOperationChangeApprovers();
+        $operation->setService($this);
+        return $operation;
     }
 
     /**
@@ -498,10 +501,10 @@ class PartnerAPIService {
      * @return PartnerAPIOperationVerifyDomain
      */
     public function operationVerifyDomain() {
-    	require_once 'certumPartnerAPI/operations/operationVerifyDomain.php';
-    	$operation = new PartnerAPIOperationVerifyDomain();
-    	$operation->setService($this);
-    	return $operation;
+        require_once 'certumPartnerAPI/operations/operationVerifyDomain.php';
+        $operation = new PartnerAPIOperationVerifyDomain();
+        $operation->setService($this);
+        return $operation;
     }
 
     /**

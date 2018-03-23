@@ -47,7 +47,9 @@ class CertumTool extends \hiapi\components\AbstractTool
         $op = $this->service->{"operation$command"}();
 
         foreach ($args as $key => $value) {
-            call_user_func_array([$op, $key], is_array($value) ? $value : [$value]);
+            if (method_exists($op, $key)) {
+                call_user_func_array([$op, $key], is_array($value) ? $value : [$value]);
+            }
         }
         try {
             $op->call();

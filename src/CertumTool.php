@@ -43,11 +43,19 @@ class CertumTool extends \hiapi\components\AbstractTool
     public function request($command, $args = [])
     {
         $this->connect();
+
         $op = $this->service->{"operation$command"}();
+
         foreach ($args as $key => $value) {
-            $op->{$key}($value);
+            if (is_callable([$op, $key]) ) {
+                call_user_func_array([$op, $key], is_array($value) ? $value : [$value]);
+            }
         }
-        $op->call();
+        try {
+            $op->call();
+        } catch (\PartnerAPIException $e) {
+            return err::set([], $e->getMessage());
+        }
 
         return $this->response($op);
     }
@@ -55,7 +63,10 @@ class CertumTool extends \hiapi\components\AbstractTool
     protected function response($op)
     {
         if ($op->isSuccess()) {
-            return $op->getOutputDataAsArray();
+            return [
+                'array' => $op->getOutputDataAsArray(),
+                'object' => $op,
+            ];
         }
 
         return err::set([], arr::cjoin(arr::get_sub($op->getErrorTexts(), 'text'), '; '));
@@ -64,21 +75,27 @@ class CertumTool extends \hiapi\components\AbstractTool
     /***
       * Getting basic data for certificate
       */
-    private function _prepareOrderData($row)
+    private function _prepareOrderData($row, $shift = 0)
     {
+        if (empty($row['admin_id']) && empty($row['client_id'])) {
+            return err::set($row, 'no requestor info');
+        }
+
+        $row['contact_id'] = isset($row['admin_id']) ? $row['admin_id'] : $row['client_id'];
         $contact = $this->_prepareOrderContacts($row);
         if (err::is($contact)) {
             return err::set($row, err::get($contact));
         }
 
-        $contact =  $contact[$row['admin_id']];
-        return [
-            'setProductCode' => $row['product_no'] + $row['amount'] - 1,
-            'setCSR' => $row['csr'],
+        $codes = array_flip(include "CertumCertificatesCode.php");
+        return array_filter([
+            'setProductCode' => $codes[$row['product']] + $row['amount'] - 1 + $shift,
+            'setCSR' => $shift === 0 || isset($row['csr']) ? $row['csr'] : null,
             'setCustomer' => $contact['client'],
             'setHashAlgorithm' => "SHA2",
-            'setEmail' => $contact['email'],
-            'setRequestorInfo' => [
+            'setEmail' => $shift === 0 ? $contact['email'] : null,
+            'setSerialNumber' => $shift !== 0 && !isset($row['csr']) ? $row['serial'] : null,
+            'setRequestorInfo' => $shift === 0 ? [
                 $contact['first_name'],
                 $contact['last_name'],
                 $contact['email'],
@@ -87,16 +104,16 @@ class CertumTool extends \hiapi\components\AbstractTool
                 $contact['postal_code'],
                 $contact['city'],
                 $contact['street1'],
-            ],
-            'setLanguage' => CertumTool::LANG,
+            ] : null,
+            'setLanguage' => $shift === 0 ? CertumTool::LANG : null,
             'setVerificationNotificationEnabled' => true,
             'addApprover' => [
                 $row['fqdn'],
                 $row['approver_email'],
-                strtoupper($row['dcv_method']),
+                strtoupper($row['dcv_method'] ? : 'DNS'),
             ],
-            'addSANEntry' => $row['fqdn'],
-        ];
+            'addSANEntry' => $shift === 0 ? $row['fqdn'] : null,
+        ]);
     }
 
     public function certificateGetWebserverTypes()
@@ -118,11 +135,12 @@ class CertumTool extends \hiapi\components\AbstractTool
 
     protected function _prepareOrderContacts($row)
     {
-        if (empty($row['admin_id'])) {
-            return err::set($row, 'no data given', ['field' => "admin"]);
+        $contacts = $this->base->contactsSearch(['ids' => $row['contact_id']]);
+        if (err::is($contacts)) {
+            return err::set($row, err::get($contacts));
         }
 
-        return $this->base->contactsSearch(['ids' => $row['admin_id']]);
+        return array_shift($contacts);
     }
 
     /// GENERAL COMMANDS
@@ -135,7 +153,7 @@ class CertumTool extends \hiapi\components\AbstractTool
             return err::set($row, err::get($res));
         }
 
-        foreach ($res['getProductListResponse']['products']['product'] as $product) {
+        foreach ($res['array']['getProductListResponse']['products']['product'] as $product) {
             $_res["certum_{$product['code']}"] = [
                 'code' => $product['code'],
                 'type' => $product['type'],
@@ -149,14 +167,22 @@ class CertumTool extends \hiapi\components\AbstractTool
 
     public function certificateInfo($row)
     {
-        $res = $this->request('GetCertificate', [
-            'setOrderID' => $rowp['remoteid'],
+        $res = $this->request('GetOrderByOrderID', [
+            'setOrderID' => $row['remoteid'],
+            'setOrderStatus' => true,
+            'setCertificateDetails' => true,
+            'setOrderDetails' => true,
         ]);
+
         if (err::is($res)) {
             return err::set($row, err::get($res));
         }
 
-        $cert = $op->getCertificateDetails();
+        $cert = $res['object']->getOrders()->certificateDetails;
+        if ($cert == null) {
+            return $row;
+        }
+
         return [
             'id' => $row['id'],
             'crt_code' => $cert->X509Cert,
@@ -198,37 +224,75 @@ class CertumTool extends \hiapi\components\AbstractTool
             return err::set($row, err::get($res));
         }
 
-        $op = $this->service->operationVerifyDomain();
-        $op->setCode($res['quickOrderResponse']['verifications']['verification']['code']);
-        $op->call();
-        return err::is($res) ? err::set($row, err::get($res)) : [
-            'order_id' => $res['quickOrderResponse']['orderID'],
-            'code' => $res['quickOrderResponse']['verifications']['verification']['code'],
+        $this->request('VerifyDomain', [
+            'setCode' => $res['array']['quickOrderResponse']['verifications']['verification']['code'],
+        ]);
+
+        return [
+            'order_id' => $res['array']['quickOrderResponse']['orderID'],
+            'code' => $res['array']['quickOrderResponse']['verifications']['verification']['code'],
+            'name' => $row['fqdn'],
         ];
     }
 
     public function certificateRenew($row = [])
     {
-        $data = $this->_prepareOrderData($row);
+        if (empty($row)) {
+            return err::set($row, 'no data given');
+        }
+
+        $data = $this->certificateInfo($row);
+        if (err::is($data)) {
+            return err::set($row, err::get($data));
+        }
+
+        $row = array_merge($row, array_filter($data));
+        $data = $this->_prepareOrderData($row, 5);
         if (err::is($data)) {
             return $data;
         }
 
-        $op = $this->service->operationRenewCertificate();
+        $res = $this->request('RenewCertificate', $data);
+        if (err::is($res)) {
+            return err::set($row, err::get($res));
+        }
 
-        return $this->request('addSSLRenewOrder', [$data]);
+        return [
+            'id' => $row['id'],
+            'order_id' => $res['object']->getOrderID(),
+            'dns_names' => arr::cjoin(array_keys($res['object']->getVerifications())),
+        ];
     }
 
     public function certificateReissue($row)
     {
-        $response = $this->request('reIssueOrder', [$row['order_id'], $row]);
+        $data = $this->certificateInfo($row);
+        if (err::is($data)) {
+            return err::set($row, err::get($data));
+        }
 
-        return $response;
+        $res = $this->request('ReissueCertificate', array_filter([
+            'setSerialNumber' => $data['serial'],
+            'setHashAlgorithm' => "SHA2",
+            'setCSR' => $row['csr'],
+        ]));
+
+        if (err::is($res)) {
+            return err::set($row, err::get($res));
+        }
+
+        return [
+            'id' => $row['id'],
+            'order_id' => $res['object']->getOrderID(),
+        ];
     }
 
     /// CANCEL
     public function certificateCancel($row)
     {
-        return $this->request('cancelSSLOrder', [$row['remoteid'], $row['reason']]);
+        return $this->request('CancelOrder', [
+            'setOrderID' => $row['remoteid'],
+            'setNote' => $row['reason'],
+        ]);
     }
 }

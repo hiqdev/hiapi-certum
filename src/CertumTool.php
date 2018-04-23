@@ -184,6 +184,10 @@ class CertumTool extends \hiapi\components\AbstractTool
                 $certR = $this->request('GetCertificate', [
                     'setOrderID' => $row['remoteid'],
                 ]);
+                if (err::is($certR)) {
+                    continue;
+                }
+
                 $cert = $certR['object']->getCertificateDetails();
                 $ca_code = arr::cjoin($certR['object']->getCaBundle()->X509Cert, "\n");
                 $serial = $cert->serialNumber ? : $order->certificateDetails->serialNumber;
@@ -192,7 +196,7 @@ class CertumTool extends \hiapi\components\AbstractTool
             }
         }
 
-        if ($cert == null) {
+        if ($cert === null) {
             return $row;
         }
 

@@ -178,19 +178,36 @@ class CertumTool extends \hiapi\components\AbstractTool
             return err::set($row, err::get($res));
         }
 
-        $cert = $res['object']->getOrders()->certificateDetails;
-        if ($cert == null) {
+        $orders = $res['object']->getOrders();
+        foreach ($orders as $order) {
+            if ($order->certificateDetails !== null) {
+                $certR = $this->request('GetCertificate', [
+                    'setOrderID' => $row['remoteid'],
+                ]);
+                if (err::is($certR)) {
+                    continue;
+                }
+
+                $cert = $certR['object']->getCertificateDetails();
+                $ca_code = arr::cjoin($certR['object']->getCaBundle()->X509Cert, "\n");
+                $serial = $cert->serialNumber ? : $order->certificateDetails->serialNumber;
+                $status = $cert->certificateStatus ? : $order->certificateDetails->certificateStatus;
+                break;
+            }
+        }
+
+        if ($cert === null) {
             return $row;
         }
 
         return [
             'id' => $row['id'],
             'crt_code' => $cert->X509Cert,
-            'ca_code' => $op->getCaBundle(),
-            'state' => $cert->certificateStatus,
-            'begins' => $cert->startDate,
-            'expires' => $cert->endDate,
-            'serial' => $cert->serialNumber,
+            'ca_code' => $ca_code,
+            'state' => $status,
+            'begins' => date("Y-m-d H:i:s", strtotime($cert->startDate)),
+            'expires' => date("Y-m-d H:i:s", strtotime($cert->endDate)),
+            'serial' => $serial,
         ];
     }
 
@@ -294,5 +311,24 @@ class CertumTool extends \hiapi\components\AbstractTool
             'setOrderID' => $row['remoteid'],
             'setNote' => $row['reason'],
         ]);
+    }
+
+    public function certificateSendNotifications($row)
+    {
+        return $this->request('SendNotifications', [
+            'setOrderID' => $row['remoteid'],
+        ]);
+    }
+
+    public function certificateChangeApprovers($row)
+    {
+        return $this->request('ChangeApprovers', array_filter([
+            'setOrderID' => $row['remoteid'],
+            'addApprover' => [
+                $row['fqdn'],
+                $row['approver_email'],
+                strtoupper($row['dcv_method'] ? : 'DNS'),
+            ],
+        ]));
     }
 }

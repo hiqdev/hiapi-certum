@@ -130,7 +130,7 @@ class CertumTool extends \hiapi\components\AbstractTool
             return err::set($row, err::get($res));
         }
 
-        return $res;
+        return $res['array'];
     }
 
     protected function _prepareOrderContacts($row)
@@ -189,7 +189,7 @@ class CertumTool extends \hiapi\components\AbstractTool
                 }
 
                 $cert = $certR['object']->getCertificateDetails();
-                $ca_code = arr::cjoin($certR['object']->getCaBundle()->X509Cert, "\n");
+                $ca_code = implode("\n", $certR['object']->getCaBundle()->X509Cert);
                 $serial = $cert->serialNumber ? : $order->certificateDetails->serialNumber;
                 $status = $cert->certificateStatus ? : $order->certificateDetails->certificateStatus;
                 break;

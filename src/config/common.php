@@ -12,7 +12,7 @@ return [
     'container' => [
         'definitions' => [
             'certumTool' => [
-                'class' => \hiapi\certum\CertumTool::class,
+                '__class' => \hiapi\certum\CertumTool::class,
             ],
         ],
     ],

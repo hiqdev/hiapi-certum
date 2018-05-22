@@ -26,14 +26,13 @@ class CertumTool extends \hiapi\components\AbstractTool
 {
 
     const LANG = 'en';
-    public $debug = true;
     protected $service = null;
 
     protected function connect() {
         if ($this->service === null) {
             set_include_path(get_include_path() . PATH_SEPARATOR . dirname(__DIR__) . '/src/lib/');
             require_once "certumPartnerAPI/service.php";
-            $this->service = new PartnerAPIService($this->data['login'], $this->data['password'], $this->debug ? PartnerAPIService::WSDL_TEST : PartnerAPIService::WSDL_PROD, CertumTool::LANG);
+            $this->service = new PartnerAPIService($this->data['login'], $this->data['password'], $this->data['url'], CertumTool::LANG);
             $this->service->setCatchSoapFault(TRUE);
         }
 

@@ -109,7 +109,7 @@ class CertumTool extends \hiapi\components\AbstractTool
             'addApprover' => [
                 $row['fqdn'],
                 $row['approver_email'],
-                $row['dcv_method'] === 'email' ? null : (strtoupper($row['dcv_method'] ? : 'DNS')),
+                $row['dcv_method'] === 'email' ? null : strtoupper($row['dcv_method'] ? : 'DNS'),
             ],
             'addSANEntry' => $shift === 0 ? $row['fqdn'] : null,
         ]);
@@ -236,13 +236,16 @@ class CertumTool extends \hiapi\components\AbstractTool
         }
 
         $res = $this->request('QuickOrder', $data);
+        d($res);
         if (err::is($res)) {
             return err::set($row, err::get($res));
         }
 
-        $this->request('VerifyDomain', [
-            'setCode' => $res['array']['quickOrderResponse']['verifications']['verification']['code'],
-        ]);
+        if ($res['array']['quickOrderResponse']['verifications']['verification']['code']) {
+            $this->request('VerifyDomain', [
+                'setCode' => $res['array']['quickOrderResponse']['verifications']['verification']['code'],
+            ]);
+        }
 
         return [
             'order_id' => $res['array']['quickOrderResponse']['orderID'],

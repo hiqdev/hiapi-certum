@@ -236,7 +236,6 @@ class CertumTool extends \hiapi\components\AbstractTool
         }
 
         $res = $this->request('QuickOrder', $data);
-        d($res);
         if (err::is($res)) {
             return err::set($row, err::get($res));
         }

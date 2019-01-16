@@ -9,11 +9,7 @@
  */
 
 return [
-    'container' => [
-        'definitions' => [
-            'certumTool' => [
-                '__class' => \hiapi\certum\CertumTool::class,
-            ],
-        ],
+    'certumTool' => [
+        '__class' => \hiapi\certum\CertumTool::class,
     ],
 ];

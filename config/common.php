@@ -8,12 +8,10 @@
  * @copyright Copyright (c) 2018, HiQDev (http://hiqdev.com/)
  */
 
-return [
-    'container' => [
-        'definitions' => [
-            'certumTool' => [
-                '__class' => \hiapi\certum\CertumTool::class,
-            ],
-        ],
+$definitions = [
+    'certumTool' => [
+        '__class' => \hiapi\certum\CertumTool::class,
     ],
 ];
+
+return class_exists('Yii') ? ['container' => ['definitions' => $definitions]] : $definitions;

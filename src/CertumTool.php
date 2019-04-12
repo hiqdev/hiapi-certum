@@ -12,9 +12,9 @@
 namespace hiapi\certum;
 
 use Closure;
-use dot;
-use err;
-use arr;
+use hiapi\legacy\lib\deps\err;
+use hiapi\legacy\lib\deps\arr;
+use hiapi\legacy\lib\deps\dot;
 use PartnerAPIService;
 
 /**
@@ -166,6 +166,7 @@ class CertumTool extends \hiapi\components\AbstractTool
 
     public function certificateInfo($row)
     {
+        return [];
         $res = $this->request('GetOrderByOrderID', [
             'setOrderID' => $row['remoteid'],
             'setOrderStatus' => true,

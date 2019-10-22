@@ -14,4 +14,4 @@ $definitions = [
     ],
 ];
 
-return class_exists('Yii') ? ['container' => ['definitions' => $definitions]] : $definitions;
+return class_exists(Yiisoft\Factory\Definitions\Reference::class) ? $definitions : ['container' => ['definitions' => $definitions]];
